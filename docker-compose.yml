@@ -1,0 +1,100 @@
+version: "3.8"
+
+services:
+  edc-factory-a:
+    build:
+      context: .worktrees/backend-agent/data-space/edc-connector
+      dockerfile: Dockerfile
+    container_name: edc-factory-a
+    environment:
+      - EDC_CONNECTOR_NAME=FactoryA
+      - EDC_CONNECTOR_ID=urn:connector:factory-a
+      - EDC_CONNECTOR_PORT=8080
+      - EDC_CONFIG_PATH=config/config.properties
+      - EDC_FLOWER_SERVER=flower-server:8080
+      - EDC_OTHER_CONNECTORS=http://edc-factory-b:8081,http://edc-factory-c:8082
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data-space/edc-connector/config:/app/config
+    depends_on:
+      - flower-server
+    networks:
+      - edc-network
+    restart: unless-stopped
+
+  edc-factory-b:
+    build:
+      context: .worktrees/backend-agent/data-space/edc-connector
+      dockerfile: Dockerfile
+    container_name: edc-factory-b
+    environment:
+      - EDC_CONNECTOR_NAME=FactoryB
+      - EDC_CONNECTOR_ID=urn:connector:factory-b
+      - EDC_CONNECTOR_PORT=8080
+      - EDC_CONFIG_PATH=config/config.properties
+      - EDC_FLOWER_SERVER=flower-server:8080
+      - EDC_OTHER_CONNECTORS=http://edc-factory-a:8080,http://edc-factory-c:8082
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./data-space/edc-connector/config/config-factory-b.properties:/app/config/config.properties
+    depends_on:
+      - flower-server
+    networks:
+      - edc-network
+    restart: unless-stopped
+
+  edc-factory-c:
+    build:
+      context: .worktrees/backend-agent/data-space/edc-connector
+      dockerfile: Dockerfile
+    container_name: edc-factory-c
+    environment:
+      - EDC_CONNECTOR_NAME=FactoryC
+      - EDC_CONNECTOR_ID=urn:connector:factory-c
+      - EDC_CONNECTOR_PORT=8080
+      - EDC_CONFIG_PATH=config/config.properties
+      - EDC_FLOWER_SERVER=flower-server:8080
+      - EDC_OTHER_CONNECTORS=http://edc-factory-a:8080,http://edc-factory-b:8081
+    ports:
+      - "8082:8080"
+    volumes:
+      - ./data-space/edc-connector/config/config-factory-c.properties:/app/config/config.properties
+    depends_on:
+      - flower-server
+    networks:
+      - edc-network
+    restart: unless-stopped
+
+  flower-server:
+    build:
+      context: .worktrees/backend-agent/federated-learning
+      dockerfile: Dockerfile
+    container_name: flower-server
+    ports:
+      - "8083:8080"
+    networks:
+      - edc-network
+    restart: unless-stopped
+
+  mqtt-broker:
+    image: eclipse-mosquitto:2
+    container_name: mqtt-broker
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - mosquitto-config:/mosquitto/config
+      - mosquitto-data:/mosquitto/data
+    networks:
+      - edc-network
+    restart: unless-stopped
+
+volumes:
+  mosquitto-config:
+  mosquitto-data:
+
+networks:
+  edc-network:
+    driver: bridge
