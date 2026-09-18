@@ -1,6 +1,15 @@
 import streamlit as st
 import time
-from components import render_factory_status, render_sensor_charts, render_model_metrics, render_alerts
+from components import (
+    render_factory_status,
+    render_sensor_charts,
+    render_model_metrics,
+    render_alerts,
+    render_live_charts,
+    render_factory_comparison,
+    render_historical_trends,
+    render_prediction_timeline,
+)
 
 st.set_page_config(
     page_title="Industrial Data Space Dashboard",
@@ -69,13 +78,18 @@ alerts_placeholder = alerts_col.empty()
 model_placeholder = model_col.empty()
 uptime_placeholder = uptime_col.empty()
 
-factory_col, chart_col = st.columns([1, 2])
-factory_placeholder = factory_col.empty()
-chart_placeholder = chart_col.empty()
+tab_live, tab_sensors, tab_compare, tab_history, tab_predict, tab_models = st.tabs(
+    ["⚡ Live Data", "📊 Sensor Charts", "🏭 Factory Comparison", "📈 Historical Trends", "🔮 Predictions", "🤖 Model Performance"]
+)
 
-metrics_col, alerts_detail_col = st.columns(2)
-metrics_placeholder = metrics_col.empty()
-alerts_detail_placeholder = alerts_detail_col.empty()
+live_placeholder = tab_live.empty()
+factory_placeholder = tab_live.empty()
+chart_placeholder = tab_sensors.empty()
+compare_placeholder = tab_compare.empty()
+history_placeholder = tab_history.empty()
+predict_placeholder = tab_predict.empty()
+metrics_placeholder = tab_models.empty()
+alerts_detail_placeholder = tab_models.empty()
 
 footer = st.container()
 with footer:
@@ -97,6 +111,11 @@ while True:
         )
 
     try:
+        render_live_charts(live_placeholder)
+    except Exception:
+        live_placeholder.warning("Live data unavailable")
+
+    try:
         render_factory_status(factory_placeholder)
     except Exception:
         factory_placeholder.warning("Factory data unavailable")
@@ -105,6 +124,21 @@ while True:
         render_sensor_charts(chart_placeholder)
     except Exception:
         chart_placeholder.warning("Sensor data unavailable")
+
+    try:
+        render_factory_comparison(compare_placeholder)
+    except Exception:
+        compare_placeholder.warning("Factory comparison unavailable")
+
+    try:
+        render_historical_trends(history_placeholder)
+    except Exception:
+        history_placeholder.warning("Historical data unavailable")
+
+    try:
+        render_prediction_timeline(predict_placeholder)
+    except Exception:
+        predict_placeholder.warning("Predictions unavailable")
 
     try:
         render_model_metrics(metrics_placeholder)
