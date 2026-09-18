@@ -1,169 +1,95 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: dashboard
-  labels:
-    app.kubernetes.io/part-of: industrial-data-space
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fastapi-backend
-  namespace: dashboard
+  name: dashboard
+  namespace: industrial-data-space
   labels:
-    app: fastapi-backend
+    app: dashboard
+    app.kubernetes.io/name: dashboard
+    app.kubernetes.io/part-of: federated-learning-platform
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: fastapi-backend
+      app: dashboard
   template:
     metadata:
       labels:
-        app: fastapi-backend
+        app: dashboard
     spec:
       containers:
         - name: fastapi-backend
-          image: industrial-data-space/fastapi-backend:latest
-          imagePullPolicy: IfNotPresent
+          image: industrial-data-space/dashboard:latest
+          imagePullPolicy: Never
+          command:
+            - "uvicorn"
+            - "backend.main:app"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8000"
           ports:
             - containerPort: 8000
+              name: api
               protocol: TCP
           env:
-            - name: FASTAPI_HOST
-              value: "0.0.0.0"
-            - name: FASTAPI_PORT
-              value: "8000"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: MQTT_BROKER_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-config
+                  key: MQTT_BROKER_HOST
+            - name: MQTT_BROKER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-config
+                  key: MQTT_BROKER_PORT
+            - name: FLOWER_SERVER_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-config
+                  key: FLOWER_SERVER_HOST
+            - name: FLOWER_SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-config
+                  key: FLOWER_SERVER_PORT
           resources:
             requests:
-              cpu: 100m
+              cpu: 200m
               memory: 128Mi
             limits:
               cpu: 500m
               memory: 256Mi
-          readinessProbe:
-            httpGet:
-              path: /api/factories
-              port: 8000
-            initialDelaySeconds: 5
-            periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /api/factories
               port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 30
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: streamlit-dashboard
-  namespace: dashboard
-  labels:
-    app: streamlit-dashboard
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: streamlit-dashboard
-  template:
-    metadata:
-      labels:
-        app: streamlit-dashboard
-    spec:
-      containers:
-        - name: streamlit-dashboard
-          image: industrial-data-space/streamlit-dashboard:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8501
-              protocol: TCP
-          env:
-            - name: FASTAPI_URL
-              value: "http://fastapi-backend:8000"
-            - name: STREAMLIT_SERVER_PORT
-              value: "8501"
-            - name: STREAMLIT_SERVER_ADDRESS
-              value: "0.0.0.0"
-            - name: STREAMLIT_SERVER_HEADLESS
-              value: "true"
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 8501
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 8501
             initialDelaySeconds: 15
             periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/factories
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: fastapi-backend
-  namespace: dashboard
+  name: dashboard-api
+  namespace: industrial-data-space
   labels:
-    app: fastapi-backend
+    app: dashboard
+    app.kubernetes.io/name: dashboard
+    app.kubernetes.io/part-of: federated-learning-platform
 spec:
   type: ClusterIP
   selector:
-    app: fastapi-backend
+    app: dashboard
   ports:
-    - port: 8000
+    - name: api
+      port: 8000
       targetPort: 8000
       protocol: TCP
-      name: http
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: streamlit-dashboard
-  namespace: dashboard
-  labels:
-    app: streamlit-dashboard
-spec:
-  type: ClusterIP
-  selector:
-    app: streamlit-dashboard
-  ports:
-    - port: 8501
-      targetPort: 8501
-      protocol: TCP
-      name: http
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: dashboard-ingress
-  namespace: dashboard
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  rules:
-    - host: dashboard.local
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: streamlit-dashboard
-                port:
-                  number: 8501
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: fastapi-backend
-                port:
-                  number: 8000

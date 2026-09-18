@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: industrial-data-space
+  labels:
+    app.kubernetes.io/name: industrial-data-space
+    app.kubernetes.io/part-of: federated-learning-platform
