@@ -1,0 +1,275 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edc-factory-a
+  namespace: industrial-data-space
+  labels:
+    app: edc-connector
+    app.kubernetes.io/name: edc-connector
+    app.kubernetes.io/component: factory-a
+    app.kubernetes.io/part-of: federated-learning-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edc-connector
+      factory-id: FactoryA
+  template:
+    metadata:
+      labels:
+        app: edc-connector
+        factory-id: FactoryA
+    spec:
+      containers:
+        - name: edc-connector
+          image: industrial-data-space/edc-connector:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+            - name: EDC_CONNECTOR_NAME
+              value: "FactoryA"
+            - name: EDC_CONNECTOR_ID
+              value: "urn:connector:factory-a"
+            - name: EDC_CONNECTOR_PORT
+              value: "8080"
+            - name: EDC_CONFIG_PATH
+              value: "/app/config/config.properties"
+            - name: EDC_FLOWER_SERVER
+              value: "flower-server:8080"
+            - name: EDC_OTHER_CONNECTORS
+              value: "http://edc-factory-b:8080,http://edc-factory-c:8080"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: edc-config
+              mountPath: /app/config/config.properties
+              subPath: config-factory-a.properties
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: edc-config
+          configMap:
+            name: edc-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edc-factory-a
+  namespace: industrial-data-space
+  labels:
+    app: edc-connector
+    app.kubernetes.io/name: edc-connector
+    app.kubernetes.io/component: factory-a
+    app.kubernetes.io/part-of: federated-learning-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: edc-connector
+    factory-id: FactoryA
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edc-factory-b
+  namespace: industrial-data-space
+  labels:
+    app: edc-connector
+    app.kubernetes.io/name: edc-connector
+    app.kubernetes.io/component: factory-b
+    app.kubernetes.io/part-of: federated-learning-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edc-connector
+      factory-id: FactoryB
+  template:
+    metadata:
+      labels:
+        app: edc-connector
+        factory-id: FactoryB
+    spec:
+      containers:
+        - name: edc-connector
+          image: industrial-data-space/edc-connector:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+            - name: EDC_CONNECTOR_NAME
+              value: "FactoryB"
+            - name: EDC_CONNECTOR_ID
+              value: "urn:connector:factory-b"
+            - name: EDC_CONNECTOR_PORT
+              value: "8080"
+            - name: EDC_CONFIG_PATH
+              value: "/app/config/config.properties"
+            - name: EDC_FLOWER_SERVER
+              value: "flower-server:8080"
+            - name: EDC_OTHER_CONNECTORS
+              value: "http://edc-factory-a:8080,http://edc-factory-c:8080"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: edc-config
+              mountPath: /app/config/config.properties
+              subPath: config-factory-b.properties
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: edc-config
+          configMap:
+            name: edc-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edc-factory-b
+  namespace: industrial-data-space
+  labels:
+    app: edc-connector
+    app.kubernetes.io/name: edc-connector
+    app.kubernetes.io/component: factory-b
+    app.kubernetes.io/part-of: federated-learning-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: edc-connector
+    factory-id: FactoryB
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edc-factory-c
+  namespace: industrial-data-space
+  labels:
+    app: edc-connector
+    app.kubernetes.io/name: edc-connector
+    app.kubernetes.io/component: factory-c
+    app.kubernetes.io/part-of: federated-learning-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edc-connector
+      factory-id: FactoryC
+  template:
+    metadata:
+      labels:
+        app: edc-connector
+        factory-id: FactoryC
+    spec:
+      containers:
+        - name: edc-connector
+          image: industrial-data-space/edc-connector:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+            - name: EDC_CONNECTOR_NAME
+              value: "FactoryC"
+            - name: EDC_CONNECTOR_ID
+              value: "urn:connector:factory-c"
+            - name: EDC_CONNECTOR_PORT
+              value: "8080"
+            - name: EDC_CONFIG_PATH
+              value: "/app/config/config.properties"
+            - name: EDC_FLOWER_SERVER
+              value: "flower-server:8080"
+            - name: EDC_OTHER_CONNECTORS
+              value: "http://edc-factory-a:8080,http://edc-factory-b:8080"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: edc-config
+              mountPath: /app/config/config.properties
+              subPath: config-factory-c.properties
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: edc-config
+          configMap:
+            name: edc-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edc-factory-c
+  namespace: industrial-data-space
+  labels:
+    app: edc-connector
+    app.kubernetes.io/name: edc-connector
+    app.kubernetes.io/component: factory-c
+    app.kubernetes.io/part-of: federated-learning-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: edc-connector
+    factory-id: FactoryC
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP

@@ -1,0 +1,149 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-client-factory-a
+  namespace: industrial-data-space
+  labels:
+    app: ml-client
+    app.kubernetes.io/name: ml-client
+    app.kubernetes.io/component: factory-a
+    app.kubernetes.io/part-of: federated-learning-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-client
+      factory-id: FactoryA
+  template:
+    metadata:
+      labels:
+        app: ml-client
+        factory-id: FactoryA
+    spec:
+      containers:
+        - name: ml-client
+          image: industrial-data-space/federated-learning:latest
+          imagePullPolicy: Never
+          args:
+            - "--factory-id"
+            - "FactoryA"
+            - "--server-address"
+            - "flower-server:8080"
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: FACTORY_ID
+              value: "FactoryA"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: factory-a-data
+              mountPath: /app/iot-simulation/data
+      volumes:
+        - name: factory-a-data
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-client-factory-b
+  namespace: industrial-data-space
+  labels:
+    app: ml-client
+    app.kubernetes.io/name: ml-client
+    app.kubernetes.io/component: factory-b
+    app.kubernetes.io/part-of: federated-learning-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-client
+      factory-id: FactoryB
+  template:
+    metadata:
+      labels:
+        app: ml-client
+        factory-id: FactoryB
+    spec:
+      containers:
+        - name: ml-client
+          image: industrial-data-space/federated-learning:latest
+          imagePullPolicy: Never
+          args:
+            - "--factory-id"
+            - "FactoryB"
+            - "--server-address"
+            - "flower-server:8080"
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: FACTORY_ID
+              value: "FactoryB"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: factory-b-data
+              mountPath: /app/iot-simulation/data
+      volumes:
+        - name: factory-b-data
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-client-factory-c
+  namespace: industrial-data-space
+  labels:
+    app: ml-client
+    app.kubernetes.io/name: ml-client
+    app.kubernetes.io/component: factory-c
+    app.kubernetes.io/part-of: federated-learning-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-client
+      factory-id: FactoryC
+  template:
+    metadata:
+      labels:
+        app: ml-client
+        factory-id: FactoryC
+    spec:
+      containers:
+        - name: ml-client
+          image: industrial-data-space/federated-learning:latest
+          imagePullPolicy: Never
+          args:
+            - "--factory-id"
+            - "FactoryC"
+            - "--server-address"
+            - "flower-server:8080"
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: FACTORY_ID
+              value: "FactoryC"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: factory-c-data
+              mountPath: /app/iot-simulation/data
+      volumes:
+        - name: factory-c-data
+          emptyDir: {}

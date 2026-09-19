@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: industrial-data-space
+  labels:
+    app: dashboard
+    app.kubernetes.io/name: dashboard
+    app.kubernetes.io/part-of: federated-learning-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      containers:
+        - name: fastapi-backend
+          image: industrial-data-space/dashboard:latest
+          imagePullPolicy: Never
+          command:
+            - "uvicorn"
+            - "backend.main:app"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8000"
+          ports:
+            - containerPort: 8000
+              name: api
+              protocol: TCP
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: MQTT_BROKER_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-config
+                  key: MQTT_BROKER_HOST
+            - name: MQTT_BROKER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-config
+                  key: MQTT_BROKER_PORT
+            - name: FLOWER_SERVER_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-config
+                  key: FLOWER_SERVER_HOST
+            - name: FLOWER_SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-config
+                  key: FLOWER_SERVER_PORT
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /api/factories
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/factories
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-api
+  namespace: industrial-data-space
+  labels:
+    app: dashboard
+    app.kubernetes.io/name: dashboard
+    app.kubernetes.io/part-of: federated-learning-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: dashboard
+  ports:
+    - name: api
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
