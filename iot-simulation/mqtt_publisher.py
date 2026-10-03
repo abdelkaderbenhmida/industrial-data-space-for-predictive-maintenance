@@ -171,13 +171,17 @@ class MQTTPublisher:
             )
             return False
 
-    def publish_json(self, payload: str) -> bool:
+    def publish_json(self, payload) -> bool:
         if not self._connected:
             logger.warning(
                 "Cannot publish — not connected (factory=%s)",
                 self.factory_id,
             )
             return False
+
+        import json
+        if not isinstance(payload, str):
+            payload = json.dumps(payload, default=str)
 
         result = self._client.publish(self.topic, payload, qos=self.qos)
 

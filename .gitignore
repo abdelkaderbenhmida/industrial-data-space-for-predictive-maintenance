@@ -1,2 +1,11 @@
 __pycache__/
 tests/__pycache__/
+.pytest_cache/
+.worktrees/
+venv/
+tmp/
+checkpoints/
+**/checkpoints/
+**/data/
+*.keras
+*.pyc

@@ -1,11 +1,13 @@
 import asyncio
-import random
 import threading
 import time
 import uuid
-from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime
+import json
+import os
+from pathlib import Path
+import csv
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +26,7 @@ from models import (
     SimulationStatus,
     FederatedModelMetrics,
 )
+from telemetry import TelemetrySubscriber
 
 FACTORY_IDS = ["FactoryA", "FactoryB", "FactoryC"]
 
@@ -78,39 +81,21 @@ class AppState:
             fid: dict(baselines) for fid, baselines in SENSOR_BASELINES.items()
         }
         self._alert_counter = 0
-        self._seed_initial_data()
+        self.metrics_file = Path(os.environ.get("METRICS_FILE", "runtime/federated_metrics.json"))
+        self.load_local_telemetry()
 
-    def _seed_initial_data(self):
-        now = datetime.now()
-        for i in range(50):
-            ts = datetime.fromtimestamp(now.timestamp() - (50 - i) * 10)
-            for fid in FACTORY_IDS:
-                reading = self._generate_reading(fid, ts)
-                self.sensor_readings[fid].append(reading)
-                if reading.status == SensorStatus.failure:
-                    self._create_alert(reading)
-        self._seed_model_history()
-
-    def _seed_model_history(self):
-        base_time = datetime.now().timestamp()
-        for rnd in range(1, 11):
-            ts = datetime.fromtimestamp(base_time - (10 - rnd) * 3600)
-            acc = min(0.65 + rnd * 0.025 + random.uniform(-0.02, 0.02), 0.95)
-            prec = min(acc + random.uniform(-0.03, 0.05), 0.97)
-            rec = min(acc + random.uniform(-0.05, 0.03), 0.96)
-            f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
-            metrics = FederatedModelMetrics(
-                model_id="fed_predictive_maintenance_v1",
-                round=rnd,
-                accuracy=round(acc, 4),
-                precision=round(prec, 4),
-                recall=round(rec, 4),
-                f1_score=round(f1, 4),
-                loss=round(max(0.8 - rnd * 0.05 + random.uniform(-0.03, 0.03), 0.1), 4),
-                participating_factories=list(FACTORY_IDS),
-                timestamp=ts,
-            )
-            self.model_history.append(metrics)
+    def load_local_telemetry(self) -> None:
+        """Restore recent, locally owned factory CSV telemetry on API restart."""
+        data_dir = Path(os.environ.get("LOCAL_DATA_DIR", "iot-simulation/data"))
+        if not data_dir.exists():
+            return
+        for csv_path in sorted(data_dir.glob("*/readings_*.csv")):
+            try:
+                with csv_path.open(newline="", encoding="utf-8") as stream:
+                    for row in csv.DictReader(stream):
+                        self.record_reading(row)
+            except (OSError, ValueError):
+                continue
 
     def _generate_reading(self, factory_id: str, timestamp: datetime) -> SensorReading:
         state = self._sensor_state.get(factory_id, SENSOR_BASELINES.get(factory_id, SENSOR_BASELINES["FactoryA"]))
@@ -165,17 +150,33 @@ class AppState:
             )
         )
 
+    def record_reading(self, payload: dict) -> SensorReading:
+        """Accept one validated record from the MQTT subscriber or ingest API."""
+        reading = SensorReading.model_validate(payload)
+        if reading.factory_id not in FACTORY_IDS:
+            raise ValueError(f"Unknown factory '{reading.factory_id}'")
+        self.sensor_readings[reading.factory_id].append(reading)
+        self.sensor_readings[reading.factory_id] = self.sensor_readings[reading.factory_id][-500:]
+        self.readings_generated += 1
+        if reading.status == SensorStatus.failure:
+            self._create_alert(reading)
+        return reading
+
+    def load_model_history(self) -> list[FederatedModelMetrics]:
+        if not self.metrics_file.exists():
+            return []
+        try:
+            with self.metrics_file.open(encoding="utf-8") as stream:
+                return [FederatedModelMetrics.model_validate(item) for item in json.load(stream)]
+        except (OSError, json.JSONDecodeError, ValueError):
+            return []
+
     def _simulation_loop(self):
         while not self._stop_event.is_set():
             now = datetime.now()
             for fid in self.simulation_factory_ids:
                 reading = self._generate_reading(fid, now)
-                self.sensor_readings[fid].append(reading)
-                self.readings_generated += 1
-                if len(self.sensor_readings[fid]) > 500:
-                    self.sensor_readings[fid] = self.sensor_readings[fid][-500:]
-                if reading.status == SensorStatus.failure:
-                    self._create_alert(reading)
+                self.record_reading(reading.model_dump())
             self._stop_event.wait(timeout=self.simulation_interval)
 
     def start_simulation(self, req: SimulationStartRequest) -> SimulationStatus:
@@ -214,11 +215,14 @@ class AppState:
 
 
 state = AppState()
+telemetry_subscriber = TelemetrySubscriber(state.record_reading)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    telemetry_subscriber.start()
     yield
+    telemetry_subscriber.stop()
     state.stop_simulation()
 
 
@@ -306,11 +310,21 @@ async def get_factory_sensors(
 async def get_model_performance(
     rounds: int = Query(default=10, ge=1, le=100),
 ):
-    if not state.model_history:
+    history = state.load_model_history()
+    if not history:
         raise HTTPException(status_code=404, detail="No model metrics available")
-    history = state.model_history[-rounds:]
-    current = state.model_history[-1]
+    history = history[-rounds:]
+    current = history[-1]
     return ModelPerformance(current_model=current, history=history)
+
+
+@app.post("/api/telemetry", response_model=SensorReading, status_code=201)
+async def ingest_telemetry(reading: SensorReading):
+    """Ingest a validated reading; production telemetry normally arrives via MQTT."""
+    try:
+        return state.record_reading(reading.model_dump(mode="json"))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/api/alerts", response_model=list[MaintenanceAlert])

@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: federated-metrics
+  namespace: industrial-data-space
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: factory-a-data
+  namespace: industrial-data-space
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: factory-b-data
+  namespace: industrial-data-space
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: factory-c-data
+  namespace: industrial-data-space
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iot-factory-a
+  namespace: industrial-data-space
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: iot-simulator, factory-id: FactoryA}
+  template:
+    metadata:
+      labels: {app: iot-simulator, factory-id: FactoryA}
+    spec:
+      containers:
+        - name: simulator
+          image: industrial-data-space/iot-simulation:latest
+          imagePullPolicy: Never
+          args: ["--factory-id", "FactoryA", "--data-dir", "/data", "--broker", "mqtt-broker"]
+          volumeMounts: [{name: data, mountPath: /data}]
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: factory-a-data}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iot-factory-b
+  namespace: industrial-data-space
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: iot-simulator, factory-id: FactoryB}
+  template:
+    metadata:
+      labels: {app: iot-simulator, factory-id: FactoryB}
+    spec:
+      containers:
+        - name: simulator
+          image: industrial-data-space/iot-simulation:latest
+          imagePullPolicy: Never
+          args: ["--factory-id", "FactoryB", "--data-dir", "/data", "--broker", "mqtt-broker"]
+          volumeMounts: [{name: data, mountPath: /data}]
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: factory-b-data}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iot-factory-c
+  namespace: industrial-data-space
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: iot-simulator, factory-id: FactoryC}
+  template:
+    metadata:
+      labels: {app: iot-simulator, factory-id: FactoryC}
+    spec:
+      containers:
+        - name: simulator
+          image: industrial-data-space/iot-simulation:latest
+          imagePullPolicy: Never
+          args: ["--factory-id", "FactoryC", "--data-dir", "/data", "--broker", "mqtt-broker"]
+          volumeMounts: [{name: data, mountPath: /data}]
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: factory-c-data}

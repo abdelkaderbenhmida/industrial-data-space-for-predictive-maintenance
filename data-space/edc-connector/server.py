@@ -19,6 +19,7 @@ assets = {}
 contract_definitions = {}
 contract_negotiations = {}
 known_connectors = {}
+access_policies = {}
 
 
 def load_config():
@@ -43,7 +44,7 @@ def list_assets():
 
 @app.route("/api/v1/management/assets", methods=["POST"])
 def create_asset():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     asset_id = data.get("id", str(uuid.uuid4()))
     asset = {
         "id": asset_id,
@@ -51,11 +52,31 @@ def create_asset():
         "type": data.get("type", "data"),
         "description": data.get("description", ""),
         "properties": data.get("properties", {}),
+        "policyId": data.get("policyId"),
         "createdAt": datetime.utcnow().isoformat(),
         "connectorId": CONNECTOR_ID,
     }
     assets[asset_id] = asset
     return jsonify(asset), 201
+
+
+@app.route("/api/v1/management/policies", methods=["GET", "POST"])
+def manage_policies():
+    if request.method == "GET":
+        return jsonify(list(access_policies.values()))
+    data = request.get_json(silent=True) or {}
+    policy_id = data.get("id", str(uuid.uuid4()))
+    consumers = data.get("allowedConsumerIds", [])
+    if not isinstance(consumers, list):
+        return jsonify({"error": "allowedConsumerIds must be a list"}), 400
+    policy = {
+        "id": policy_id,
+        "allowedConsumerIds": consumers,
+        "purpose": data.get("purpose", "predictive-maintenance"),
+        "createdAt": datetime.utcnow().isoformat(),
+    }
+    access_policies[policy_id] = policy
+    return jsonify(policy), 201
 
 
 @app.route("/api/v1/management/assets/<asset_id>", methods=["GET"])
@@ -80,7 +101,7 @@ def list_contract_definitions():
 
 @app.route("/api/v1/management/contractdefinitions", methods=["POST"])
 def create_contract_definition():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     contract_id = data.get("id", str(uuid.uuid4()))
     contract_def = {
         "id": contract_id,
@@ -110,7 +131,7 @@ def list_negotiations():
 
 @app.route("/api/v1/management/contractnegotiations", methods=["POST"])
 def start_negotiation():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     negotiation_id = str(uuid.uuid4())
     negotiation = {
         "id": negotiation_id,
@@ -137,9 +158,39 @@ def accept_negotiation(negotiation_id):
     if negotiation_id not in contract_negotiations:
         return jsonify({"error": "Negotiation not found"}), 404
     negotiation = contract_negotiations[negotiation_id]
+    consumer_id = request.headers.get("X-Consumer-Id", "")
+    policy_id = negotiation.get("policy", {}).get("policyId")
+    policy = access_policies.get(policy_id) if policy_id else None
+    if policy and consumer_id not in policy["allowedConsumerIds"]:
+        negotiation["state"] = "DECLINED"
+        negotiation["reason"] = "consumer is not allowed by policy"
+        return jsonify(negotiation), 403
     negotiation["state"] = "CONFIRMED"
     negotiation["confirmedAt"] = datetime.utcnow().isoformat()
     return jsonify(negotiation)
+
+
+@app.route("/api/v1/data/<asset_id>", methods=["GET"])
+def request_data_access(asset_id):
+    """Policy-gated data-plane entry point.
+
+    The prototype deliberately returns the local data reference rather than proxying
+    a factory's raw telemetry through the connector.
+    """
+    asset = assets.get(asset_id)
+    if not asset:
+        return jsonify({"error": "Asset not found"}), 404
+    policy_id = asset.get("policyId")
+    policy = access_policies.get(policy_id) if policy_id else None
+    consumer_id = request.headers.get("X-Consumer-Id", "")
+    if policy and consumer_id not in policy["allowedConsumerIds"]:
+        return jsonify({"error": "Access denied by policy"}), 403
+    return jsonify({
+        "assetId": asset_id,
+        "provider": CONNECTOR_ID,
+        "dataAddress": asset["properties"].get("dataAddress", "local-only"),
+        "accessGranted": True,
+    })
 
 
 @app.route("/api/v1/ids/metadata", methods=["GET"])
@@ -179,7 +230,7 @@ def discover_connectors():
 
 @app.route("/api/v1/discovery/register", methods=["POST"])
 def register_connector():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     connector_id = data.get("id", str(uuid.uuid4()))
     connector = {
         "id": connector_id,
@@ -193,7 +244,7 @@ def register_connector():
 
 @app.route("/api/v1/discovery/register-all", methods=["POST"])
 def register_all_connectors():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     connectors = data.get("connectors", [])
     for c in connectors:
         known_connectors[c["id"]] = c

@@ -24,9 +24,12 @@ spec:
         - name: ml-client
           image: industrial-data-space/federated-learning:latest
           imagePullPolicy: Never
+          command: ["python", "client.py"]
           args:
             - "--factory-id"
             - "FactoryA"
+            - "--data-dir"
+            - "/data/FactoryA"
             - "--server-address"
             - "flower-server:8080"
           env:
@@ -43,10 +46,11 @@ spec:
               memory: 512Mi
           volumeMounts:
             - name: factory-a-data
-              mountPath: /app/iot-simulation/data
+              mountPath: /data
       volumes:
         - name: factory-a-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: factory-a-data
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -74,9 +78,12 @@ spec:
         - name: ml-client
           image: industrial-data-space/federated-learning:latest
           imagePullPolicy: Never
+          command: ["python", "client.py"]
           args:
             - "--factory-id"
             - "FactoryB"
+            - "--data-dir"
+            - "/data/FactoryB"
             - "--server-address"
             - "flower-server:8080"
           env:
@@ -93,10 +100,11 @@ spec:
               memory: 512Mi
           volumeMounts:
             - name: factory-b-data
-              mountPath: /app/iot-simulation/data
+              mountPath: /data
       volumes:
         - name: factory-b-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: factory-b-data
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -124,9 +132,12 @@ spec:
         - name: ml-client
           image: industrial-data-space/federated-learning:latest
           imagePullPolicy: Never
+          command: ["python", "client.py"]
           args:
             - "--factory-id"
             - "FactoryC"
+            - "--data-dir"
+            - "/data/FactoryC"
             - "--server-address"
             - "flower-server:8080"
           env:
@@ -143,7 +154,8 @@ spec:
               memory: 512Mi
           volumeMounts:
             - name: factory-c-data
-              mountPath: /app/iot-simulation/data
+              mountPath: /data
       volumes:
         - name: factory-c-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: factory-c-data

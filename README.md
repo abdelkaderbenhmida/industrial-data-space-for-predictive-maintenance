@@ -122,6 +122,10 @@ This starts:
 - **EDC Connector** on port `8080`
 - **Flower Server** on port `8084`
 
+The compose stack also starts three IoT publishers, three FL clients, the API, and
+the Streamlit dashboard. Factory CSVs remain in `iot-simulation/data/`; dashboard
+telemetry arrives through MQTT and FL metrics come from the Flower server.
+
 ### 3. Verify services
 
 ```bash
@@ -138,6 +142,9 @@ minikube start
 
 # Create namespace
 kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/mqtt-broker.yaml
+kubectl apply -f k8s/iot-factories.yaml
 
 # Deploy services
 kubectl apply -f k8s/flower-server.yaml

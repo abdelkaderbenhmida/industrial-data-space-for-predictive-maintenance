@@ -21,7 +21,7 @@ class TestLoadModel:
         from server import load_model
         model = load_model()
         input_shape = model.input_shape
-        assert input_shape == (None, 6)
+        assert input_shape == (None, 5)
 
     def test_model_output_shape(self):
         from server import load_model
@@ -49,7 +49,7 @@ class TestLoadModel:
     def test_model_accepts_correct_input(self):
         from server import load_model
         model = load_model()
-        x = np.random.rand(1, 6).astype(np.float32)
+        x = np.random.rand(1, 5).astype(np.float32)
         output = model.predict(x, verbose=0)
         assert output.shape == (1, 1)
         assert 0.0 <= output[0, 0] <= 1.0

@@ -72,7 +72,7 @@ class TestFlowerServerManifests:
 
     def test_configmap_namespace(self, flower_server_manifests):
         cm = [d for d in flower_server_manifests if d["kind"] == "ConfigMap"][0]
-        assert cm["metadata"]["namespace"] == "industrial-dataspace"
+        assert cm["metadata"]["namespace"] == "industrial-data-space"
 
     def test_configmap_has_required_keys(self, flower_server_manifests):
         cm = [d for d in flower_server_manifests if d["kind"] == "ConfigMap"][0]

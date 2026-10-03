@@ -55,6 +55,8 @@ spec:
                 configMapKeyRef:
                   name: platform-config
                   key: FLOWER_SERVER_PORT
+            - name: METRICS_FILE
+              value: /runtime/federated_metrics.json
           resources:
             requests:
               cpu: 200m
@@ -74,6 +76,24 @@ spec:
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 10
+          volumeMounts:
+            - name: metrics-storage
+              mountPath: /runtime
+        - name: streamlit-dashboard
+          image: industrial-data-space/dashboard:latest
+          imagePullPolicy: Never
+          command: ["streamlit", "run", "app.py", "--server.address", "0.0.0.0"]
+          env:
+            - name: DASHBOARD_API_URL
+              value: "http://127.0.0.1:8000"
+          ports:
+            - containerPort: 8501
+              name: dashboard
+              protocol: TCP
+      volumes:
+        - name: metrics-storage
+          persistentVolumeClaim:
+            claimName: federated-metrics
 ---
 apiVersion: v1
 kind: Service
@@ -92,4 +112,8 @@ spec:
     - name: api
       port: 8000
       targetPort: 8000
+      protocol: TCP
+    - name: dashboard
+      port: 8501
+      targetPort: 8501
       protocol: TCP

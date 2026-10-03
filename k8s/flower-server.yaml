@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: flower-server-config
-  namespace: industrial-dataspace
+  namespace: industrial-data-space
   labels:
     app: flower-server
     component: federated-learning
@@ -17,7 +17,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flower-server
-  namespace: industrial-dataspace
+  namespace: industrial-data-space
   labels:
     app: flower-server
     component: federated-learning
@@ -34,8 +34,8 @@ spec:
     spec:
       containers:
         - name: flower-server
-          image: federated-learning-server:latest
-          imagePullPolicy: IfNotPresent
+          image: industrial-data-space/federated-learning:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
               name: grpc
@@ -43,6 +43,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: flower-server-config
+          env:
+            - name: METRICS_FILE
+              value: /runtime/federated_metrics.json
           command:
             - python
             - server.py
@@ -78,15 +81,20 @@ spec:
           volumeMounts:
             - name: checkpoint-storage
               mountPath: /app/checkpoints
+            - name: metrics-storage
+              mountPath: /runtime
       volumes:
         - name: checkpoint-storage
           emptyDir: {}
+        - name: metrics-storage
+          persistentVolumeClaim:
+            claimName: federated-metrics
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: flower-server
-  namespace: industrial-dataspace
+  namespace: industrial-data-space
   labels:
     app: flower-server
     component: federated-learning

@@ -1,6 +1,7 @@
 import os
 import argparse
 import logging
+import time
 from pathlib import Path
 
 import numpy as np
@@ -109,7 +110,22 @@ class FactoryClient(fl.client.NumPyClient):
     ) -> tuple[float, int, dict]:
         self.set_parameters(parameters)
         loss, accuracy = self.model.evaluate(self.x_test, self.y_test, verbose=0)
-        return loss, len(self.x_test), {"accuracy": float(accuracy)}
+        probabilities = self.model.predict(self.x_test, verbose=0).reshape(-1)
+        predicted = (probabilities >= 0.5).astype(np.int32)
+        actual = self.y_test.astype(np.int32)
+        true_positive = int(np.sum((predicted == 1) & (actual == 1)))
+        false_positive = int(np.sum((predicted == 1) & (actual == 0)))
+        false_negative = int(np.sum((predicted == 0) & (actual == 1)))
+        precision = true_positive / (true_positive + false_positive) if true_positive + false_positive else 0.0
+        recall = true_positive / (true_positive + false_negative) if true_positive + false_negative else 0.0
+        f1_score = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+        return loss, len(self.x_test), {
+            "accuracy": float(accuracy),
+            "precision": precision,
+            "recall": recall,
+            "f1_score": f1_score,
+            f"participant_{self.factory_id}": 1.0,
+        }
 
 
 def parse_args() -> argparse.Namespace:
@@ -119,6 +135,12 @@ def parse_args() -> argparse.Namespace:
         type=str,
         required=True,
         help="Unique factory identifier",
+    )
+    parser.add_argument(
+        "--data-wait-seconds",
+        type=int,
+        default=60,
+        help="Wait for local factory CSV data before failing",
     )
     parser.add_argument(
         "--data-dir",
@@ -143,7 +165,16 @@ def main() -> None:
     logger.info("Data directory: %s", data_dir)
     logger.info("Server: %s", args.server_address)
 
-    client = FactoryClient(args.factory_id, data_dir, args.server_address)
+    deadline = time.monotonic() + args.data_wait_seconds
+    while True:
+        try:
+            client = FactoryClient(args.factory_id, data_dir, args.server_address)
+            break
+        except (FileNotFoundError, ValueError) as exc:
+            if time.monotonic() >= deadline:
+                raise RuntimeError(f"Factory data did not become available: {data_dir}") from exc
+            logger.info("Waiting for local data in %s", data_dir)
+            time.sleep(2)
 
     fl.client.start_client(
         server_address=args.server_address,

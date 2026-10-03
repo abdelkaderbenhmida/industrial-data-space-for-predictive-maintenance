@@ -1,100 +1,84 @@
-version: "3.8"
-
 services:
-  edc-factory-a:
-    build:
-      context: .worktrees/backend-agent/data-space/edc-connector
-      dockerfile: Dockerfile
-    container_name: edc-factory-a
-    environment:
-      - EDC_CONNECTOR_NAME=FactoryA
-      - EDC_CONNECTOR_ID=urn:connector:factory-a
-      - EDC_CONNECTOR_PORT=8080
-      - EDC_CONFIG_PATH=config/config.properties
-      - EDC_FLOWER_SERVER=flower-server:8080
-      - EDC_OTHER_CONNECTORS=http://edc-factory-b:8081,http://edc-factory-c:8082
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./data-space/edc-connector/config:/app/config
-    depends_on:
-      - flower-server
-    networks:
-      - edc-network
-    restart: unless-stopped
-
-  edc-factory-b:
-    build:
-      context: .worktrees/backend-agent/data-space/edc-connector
-      dockerfile: Dockerfile
-    container_name: edc-factory-b
-    environment:
-      - EDC_CONNECTOR_NAME=FactoryB
-      - EDC_CONNECTOR_ID=urn:connector:factory-b
-      - EDC_CONNECTOR_PORT=8080
-      - EDC_CONFIG_PATH=config/config.properties
-      - EDC_FLOWER_SERVER=flower-server:8080
-      - EDC_OTHER_CONNECTORS=http://edc-factory-a:8080,http://edc-factory-c:8082
-    ports:
-      - "8081:8080"
-    volumes:
-      - ./data-space/edc-connector/config/config-factory-b.properties:/app/config/config.properties
-    depends_on:
-      - flower-server
-    networks:
-      - edc-network
-    restart: unless-stopped
-
-  edc-factory-c:
-    build:
-      context: .worktrees/backend-agent/data-space/edc-connector
-      dockerfile: Dockerfile
-    container_name: edc-factory-c
-    environment:
-      - EDC_CONNECTOR_NAME=FactoryC
-      - EDC_CONNECTOR_ID=urn:connector:factory-c
-      - EDC_CONNECTOR_PORT=8080
-      - EDC_CONFIG_PATH=config/config.properties
-      - EDC_FLOWER_SERVER=flower-server:8080
-      - EDC_OTHER_CONNECTORS=http://edc-factory-a:8080,http://edc-factory-b:8081
-    ports:
-      - "8082:8080"
-    volumes:
-      - ./data-space/edc-connector/config/config-factory-c.properties:/app/config/config.properties
-    depends_on:
-      - flower-server
-    networks:
-      - edc-network
-    restart: unless-stopped
-
-  flower-server:
-    build:
-      context: .worktrees/backend-agent/federated-learning
-      dockerfile: Dockerfile
-    container_name: flower-server
-    ports:
-      - "8083:8080"
-    networks:
-      - edc-network
-    restart: unless-stopped
-
   mqtt-broker:
     image: eclipse-mosquitto:2
-    container_name: mqtt-broker
-    ports:
-      - "1883:1883"
-      - "9001:9001"
-    volumes:
-      - mosquitto-config:/mosquitto/config
-      - mosquitto-data:/mosquitto/data
-    networks:
-      - edc-network
-    restart: unless-stopped
+    ports: ["1883:1883", "9001:9001"]
+    volumes: ["./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro"]
 
-volumes:
-  mosquitto-config:
-  mosquitto-data:
+  flower-server:
+    build: ./federated-learning
+    command: ["python", "server.py", "--rounds", "5", "--min-clients", "3", "--port", "8080"]
+    environment: {METRICS_FILE: /runtime/federated_metrics.json}
+    ports: ["8084:8080"]
+    volumes: ["./runtime:/runtime"]
 
-networks:
-  edc-network:
-    driver: bridge
+  dashboard-api:
+    build: ./dashboard
+    environment:
+      MQTT_BROKER_HOST: mqtt-broker
+      MQTT_BROKER_PORT: "1883"
+      METRICS_FILE: /runtime/federated_metrics.json
+      LOCAL_DATA_DIR: /data
+    ports: ["8000:8000"]
+    volumes: ["./runtime:/runtime:ro", "./iot-simulation/data:/data:ro"]
+    depends_on: [mqtt-broker, flower-server]
+
+  dashboard:
+    build: ./dashboard
+    command: ["streamlit", "run", "app.py", "--server.address", "0.0.0.0"]
+    environment: {DASHBOARD_API_URL: http://dashboard-api:8000}
+    ports: ["8501:8501"]
+    depends_on: [dashboard-api]
+
+  iot-factory-a: &iot-factory
+    build: ./iot-simulation
+    command: ["python", "runner.py", "--factory-id", "FactoryA", "--data-dir", "/data", "--broker", "mqtt-broker"]
+    volumes: ["./iot-simulation/data:/data"]
+    depends_on: [mqtt-broker]
+
+  iot-factory-b:
+    <<: *iot-factory
+    command: ["python", "runner.py", "--factory-id", "FactoryB", "--data-dir", "/data", "--broker", "mqtt-broker"]
+
+  iot-factory-c:
+    <<: *iot-factory
+    command: ["python", "runner.py", "--factory-id", "FactoryC", "--data-dir", "/data", "--broker", "mqtt-broker"]
+
+  ml-client-a: &ml-client
+    build: ./federated-learning
+    command: ["python", "client.py", "--factory-id", "FactoryA", "--data-dir", "/data/FactoryA", "--server-address", "flower-server:8080"]
+    volumes: ["./iot-simulation/data:/data:ro"]
+    depends_on: [flower-server, iot-factory-a]
+
+  ml-client-b:
+    <<: *ml-client
+    command: ["python", "client.py", "--factory-id", "FactoryB", "--data-dir", "/data/FactoryB", "--server-address", "flower-server:8080"]
+    depends_on: [flower-server, iot-factory-b]
+
+  ml-client-c:
+    <<: *ml-client
+    command: ["python", "client.py", "--factory-id", "FactoryC", "--data-dir", "/data/FactoryC", "--server-address", "flower-server:8080"]
+    depends_on: [flower-server, iot-factory-c]
+
+  edc-factory-a: &edc
+    build: ./data-space/edc-connector
+    environment:
+      EDC_CONNECTOR_NAME: FactoryA
+      EDC_CONNECTOR_ID: urn:connector:factory-a
+      EDC_OTHER_CONNECTORS: http://edc-factory-b:8080,http://edc-factory-c:8080
+    ports: ["8080:8080"]
+
+  edc-factory-b:
+    <<: *edc
+    environment:
+      EDC_CONNECTOR_NAME: FactoryB
+      EDC_CONNECTOR_ID: urn:connector:factory-b
+      EDC_OTHER_CONNECTORS: http://edc-factory-a:8080,http://edc-factory-c:8080
+    ports: ["8081:8080"]
+
+  edc-factory-c:
+    <<: *edc
+    environment:
+      EDC_CONNECTOR_NAME: FactoryC
+      EDC_CONNECTOR_ID: urn:connector:factory-c
+      EDC_OTHER_CONNECTORS: http://edc-factory-a:8080,http://edc-factory-b:8080
+    ports: ["8082:8080"]
