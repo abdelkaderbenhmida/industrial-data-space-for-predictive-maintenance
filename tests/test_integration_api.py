@@ -209,6 +209,16 @@ class TestDashboardAPISimulation:
         data = response.json()
         assert data["running"] is False
 
+    def test_simulation_generator_produces_reading(self):
+        from datetime import datetime
+        from main import state
+
+        reading = state._generate_reading("FactoryA", datetime.now())
+
+        assert reading.factory_id == "FactoryA"
+        assert reading.temperature >= 20.0
+        assert reading.power_consumption >= 50.0
+
     def test_start_simulation(self):
         response = self.client.post(
             "/api/simulation/start",
