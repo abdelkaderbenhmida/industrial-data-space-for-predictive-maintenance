@@ -57,6 +57,8 @@ spec:
                   key: FLOWER_SERVER_PORT
             - name: METRICS_FILE
               value: /runtime/federated_metrics.json
+            - name: EDC_CONNECTORS
+              value: "http://edc-factory-a:8080,http://edc-factory-b:8080,http://edc-factory-c:8080"
           resources:
             requests:
               cpu: 200m

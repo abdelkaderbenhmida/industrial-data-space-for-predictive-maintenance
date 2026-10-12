@@ -1,0 +1,143 @@
+{
+  "timestamp": "2026-10-06 09:36:19",
+  "centralized": {
+    "name": "Centralized",
+    "accuracy": 0.9637305699481865,
+    "precision": 0.9361702127659575,
+    "recall": 0.9166666666666666,
+    "f1_score": 0.9263157894736842,
+    "test_samples": 193,
+    "positive_rate": 0.24870466321243523,
+    "train_time_sec": 5.754661560058594,
+    "epochs": 20,
+    "train_samples": 769
+  },
+  "federated_simulation": {
+    "name": "Federated (FedAvg simulation)",
+    "accuracy": 0.9536082474226805,
+    "precision": 0.9333333333333333,
+    "recall": 0.875,
+    "f1_score": 0.9032258064516129,
+    "train_time_sec": 24.004817724227905,
+    "rounds": 10,
+    "local_epochs": 1,
+    "round_history": [
+      {
+        "name": "FedAvg-Round1",
+        "accuracy": 0.24742268041237114,
+        "precision": 0.24742268041237114,
+        "recall": 1.0,
+        "f1_score": 0.39669421487603307,
+        "test_samples": 194,
+        "positive_rate": 0.24742268041237114,
+        "round": 1,
+        "round_time_sec": 2.313000440597534
+      },
+      {
+        "name": "FedAvg-Round2",
+        "accuracy": 0.7474226804123711,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "test_samples": 194,
+        "positive_rate": 0.24742268041237114,
+        "round": 2,
+        "round_time_sec": 2.4971203804016113
+      },
+      {
+        "name": "FedAvg-Round3",
+        "accuracy": 0.7525773195876289,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "test_samples": 194,
+        "positive_rate": 0.24742268041237114,
+        "round": 3,
+        "round_time_sec": 2.2883832454681396
+      },
+      {
+        "name": "FedAvg-Round4",
+        "accuracy": 0.7525773195876289,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "test_samples": 194,
+        "positive_rate": 0.24742268041237114,
+        "round": 4,
+        "round_time_sec": 2.6775331497192383
+      },
+      {
+        "name": "FedAvg-Round5",
+        "accuracy": 0.7525773195876289,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "test_samples": 194,
+        "positive_rate": 0.24742268041237114,
+        "round": 5,
+        "round_time_sec": 2.2493910789489746
+      },
+      {
+        "name": "FedAvg-Round6",
+        "accuracy": 0.7525773195876289,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "test_samples": 194,
+        "positive_rate": 0.24742268041237114,
+        "round": 6,
+        "round_time_sec": 2.287160634994507
+      },
+      {
+        "name": "FedAvg-Round7",
+        "accuracy": 0.7525773195876289,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "test_samples": 194,
+        "positive_rate": 0.24742268041237114,
+        "round": 7,
+        "round_time_sec": 2.5117478370666504
+      },
+      {
+        "name": "FedAvg-Round8",
+        "accuracy": 0.7525773195876289,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "test_samples": 194,
+        "positive_rate": 0.24742268041237114,
+        "round": 8,
+        "round_time_sec": 2.303497076034546
+      },
+      {
+        "name": "FedAvg-Round9",
+        "accuracy": 0.9020618556701031,
+        "precision": 1.0,
+        "recall": 0.6041666666666666,
+        "f1_score": 0.7532467532467533,
+        "test_samples": 194,
+        "positive_rate": 0.24742268041237114,
+        "round": 9,
+        "round_time_sec": 2.240067720413208
+      },
+      {
+        "name": "FedAvg-Round10",
+        "accuracy": 0.9536082474226805,
+        "precision": 0.9333333333333333,
+        "recall": 0.875,
+        "f1_score": 0.9032258064516129,
+        "test_samples": 194,
+        "positive_rate": 0.24742268041237114,
+        "round": 10,
+        "round_time_sec": 2.6012492179870605
+      }
+    ]
+  },
+  "federated_actual": null,
+  "summary": {
+    "accuracy_gap": 0.010122322525506044,
+    "f1_gap": 0.023089983022071325,
+    "conclusion": "Federated matches centralized"
+  }
+}

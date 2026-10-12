@@ -18,6 +18,7 @@ services:
       MQTT_BROKER_PORT: "1883"
       METRICS_FILE: /runtime/federated_metrics.json
       LOCAL_DATA_DIR: /data
+      EDC_CONNECTORS: http://edc-factory-a:8080,http://edc-factory-b:8080,http://edc-factory-c:8080
     ports: ["8000:8000"]
     volumes: ["./runtime:/runtime:ro", "./iot-simulation/data:/data:ro"]
     depends_on: [mqtt-broker, flower-server]
@@ -45,6 +46,7 @@ services:
 
   ml-client-a: &ml-client
     build: ./federated-learning
+    image: data2-flower-server:latest
     command: ["python", "client.py", "--factory-id", "FactoryA", "--data-dir", "/data/FactoryA", "--server-address", "flower-server:8080"]
     volumes: ["./iot-simulation/data:/data:ro"]
     depends_on: [flower-server, iot-factory-a]

@@ -31,9 +31,9 @@ def load_config():
                 line = line.strip()
                 if line and not line.startswith("#") and "=" in line:
                     key, value = line.split("=", 1)
-                    if key == "edc.connector.name":
+                    if key == "edc.connector.name" and "EDC_CONNECTOR_NAME" not in os.environ:
                         CONNECTOR_NAME = value
-                    elif key == "edc.connector.ids.id":
+                    elif key == "edc.connector.ids.id" and "EDC_CONNECTOR_ID" not in os.environ:
                         CONNECTOR_ID = value
 
 
@@ -132,12 +132,18 @@ def list_negotiations():
 @app.route("/api/v1/management/contractnegotiations", methods=["POST"])
 def start_negotiation():
     data = request.get_json(silent=True) or {}
+    offer_id = data.get("contractOfferId", "")
+    if offer_id and offer_id not in contract_definitions:
+        return jsonify({"error": "Contract offer not found"}), 404
+    policy_id = (data.get("policy") or {}).get("policyId")
+    if policy_id and policy_id not in access_policies:
+        return jsonify({"error": "Policy not found"}), 400
     negotiation_id = str(uuid.uuid4())
     negotiation = {
         "id": negotiation_id,
         "state": "REQUESTED",
         "counterPartyAddress": data.get("counterPartyAddress", ""),
-        "contractOfferId": data.get("contractOfferId", ""),
+        "contractOfferId": offer_id,
         "policy": data.get("policy", {}),
         "createdAt": datetime.utcnow().isoformat(),
         "connectorId": CONNECTOR_ID,
@@ -161,6 +167,10 @@ def accept_negotiation(negotiation_id):
     consumer_id = request.headers.get("X-Consumer-Id", "")
     policy_id = negotiation.get("policy", {}).get("policyId")
     policy = access_policies.get(policy_id) if policy_id else None
+    if policy_id and policy is None:
+        negotiation["state"] = "DECLINED"
+        negotiation["reason"] = "policy not found"
+        return jsonify(negotiation), 403
     if policy and consumer_id not in policy["allowedConsumerIds"]:
         negotiation["state"] = "DECLINED"
         negotiation["reason"] = "consumer is not allowed by policy"
@@ -182,6 +192,8 @@ def request_data_access(asset_id):
         return jsonify({"error": "Asset not found"}), 404
     policy_id = asset.get("policyId")
     policy = access_policies.get(policy_id) if policy_id else None
+    if policy_id and policy is None:
+        return jsonify({"error": "Access policy not found"}), 403
     consumer_id = request.headers.get("X-Consumer-Id", "")
     if policy and consumer_id not in policy["allowedConsumerIds"]:
         return jsonify({"error": "Access denied by policy"}), 403

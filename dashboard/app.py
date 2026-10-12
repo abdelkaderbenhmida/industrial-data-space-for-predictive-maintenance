@@ -23,6 +23,7 @@ if st.button("Refresh"):
 try:
     factories = get_api("/api/factories")
     alerts = get_api("/api/alerts?limit=10")
+    edc_status = get_api("/api/edc/status")
 except requests.RequestException as exc:
     st.error(f"Dashboard API is unavailable: {exc}")
     st.stop()
@@ -33,6 +34,13 @@ one, two, three = st.columns(3)
 one.metric("Factories reporting", f"{online} / {len(factories)}")
 two.metric("Active alerts", len(alerts))
 three.metric("Latest telemetry", latest_readings[-1]["timestamp"] if latest_readings else "Waiting")
+
+st.subheader("EDC connectors")
+edc_columns = st.columns(max(len(edc_status), 1))
+for column, connector in zip(edc_columns, edc_status):
+    state = connector.get("status", "unavailable")
+    label = connector.get("connector_name") or connector.get("endpoint", "connector")
+    column.metric(label, state.upper(), f"{connector.get('assets', 0)} assets")
 
 st.subheader("Factory telemetry")
 for factory in factories:

@@ -12,7 +12,7 @@ from data_generator import MultiFactoryGenerator
 class IoTSimulator:
     def __init__(
         self,
-        data_dir: str = "data",
+        data_dir: str = "iot-simulation/data",
         factory_ids: list[str] | None = None,
         interval_seconds: int = 10,
         seed: int | None = None,
@@ -93,6 +93,7 @@ class IoTSimulator:
         date_str = ts.strftime("%Y-%m-%d")
         writer = self._get_writer(reading["factory_id"], date_str)
         writer.writerow(reading)
+        self._file_handles[f"{reading['factory_id']}_{date_str}"].flush()
         self._update_stats(reading)
 
     def _close_files(self):

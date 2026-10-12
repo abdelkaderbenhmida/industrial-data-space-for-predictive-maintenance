@@ -13,21 +13,38 @@ import csv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from models import (
-    AlertSeverity,
-    ErrorResponse,
-    FactoryInfo,
-    FactorySensorSummary,
-    MaintenanceAlert,
-    ModelPerformance,
-    SensorReading,
-    SensorStats,
-    SensorStatus,
-    SimulationStartRequest,
-    SimulationStatus,
-    FederatedModelMetrics,
-)
-from telemetry import TelemetrySubscriber
+try:  # Package import when launched as ``backend.main`` in Docker/Kubernetes.
+    from .models import (
+        AlertSeverity,
+        ErrorResponse,
+        FactoryInfo,
+        FactorySensorSummary,
+        MaintenanceAlert,
+        ModelPerformance,
+        SensorReading,
+        SensorStats,
+        SensorStatus,
+        SimulationStartRequest,
+        SimulationStatus,
+        FederatedModelMetrics,
+    )
+    from .telemetry import TelemetrySubscriber
+except ImportError:  # Direct import used by the local test suite.
+    from models import (
+        AlertSeverity,
+        ErrorResponse,
+        FactoryInfo,
+        FactorySensorSummary,
+        MaintenanceAlert,
+        ModelPerformance,
+        SensorReading,
+        SensorStats,
+        SensorStatus,
+        SimulationStartRequest,
+        SimulationStatus,
+        FederatedModelMetrics,
+    )
+    from telemetry import TelemetrySubscriber
 
 FACTORY_IDS = ["FactoryA", "FactoryB", "FactoryC"]
 
@@ -243,6 +260,12 @@ app.add_middleware(
 )
 
 
+@app.get("/health")
+async def health():
+    """Liveness endpoint used by Docker and Kubernetes probes."""
+    return {"status": "healthy", "service": "dashboard-api"}
+
+
 @app.get("/api/factories", response_model=list[FactoryInfo])
 async def list_factories():
     factories = []
@@ -344,6 +367,37 @@ async def get_alerts(
         filtered = [a for a in filtered if a.acknowledged == acknowledged]
     filtered.sort(key=lambda a: a.timestamp, reverse=True)
     return filtered[:limit]
+
+
+@app.get("/api/edc/status")
+async def get_edc_status():
+    """Return the health of the configured factory connectors."""
+    import requests
+
+    endpoints = [
+        value.strip()
+        for value in os.environ.get(
+            "EDC_CONNECTORS",
+            "http://localhost:8080,http://localhost:8081,http://localhost:8082",
+        ).split(",")
+        if value.strip()
+    ]
+    statuses = []
+    for endpoint in endpoints:
+        try:
+            response = requests.get(f"{endpoint.rstrip('/')}/health", timeout=2)
+            payload = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+            statuses.append({
+                "endpoint": endpoint,
+                "status": payload.get("status", "unhealthy") if response.ok else "unhealthy",
+                "connector_id": payload.get("connectorId"),
+                "connector_name": payload.get("connectorName"),
+                "assets": payload.get("assets", 0),
+                "contract_definitions": payload.get("contractDefinitions", 0),
+            })
+        except (requests.RequestException, ValueError):
+            statuses.append({"endpoint": endpoint, "status": "unavailable"})
+    return statuses
 
 
 @app.post(

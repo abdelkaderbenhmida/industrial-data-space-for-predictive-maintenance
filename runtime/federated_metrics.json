@@ -1,0 +1,77 @@
+[
+  {
+    "model_id": "fed_predictive_maintenance_v1",
+    "round": 1,
+    "loss": 0.3358114327837415,
+    "accuracy": 0.8702435896875296,
+    "precision": 0.7007257024162983,
+    "recall": 0.9360954848892603,
+    "f1_score": 0.799394961591298,
+    "participating_factories": [
+      "FactoryC",
+      "FactoryA",
+      "FactoryB"
+    ],
+    "timestamp": "2026-10-12T12:16:35.296921+00:00"
+  },
+  {
+    "model_id": "fed_predictive_maintenance_v1",
+    "round": 2,
+    "loss": 0.2471185898186769,
+    "accuracy": 0.9191211709416686,
+    "precision": 0.8228598214960187,
+    "recall": 0.9048587475764075,
+    "f1_score": 0.8603822691627011,
+    "participating_factories": [
+      "FactoryC",
+      "FactoryA",
+      "FactoryB"
+    ],
+    "timestamp": "2026-10-12T12:16:37.770799+00:00"
+  },
+  {
+    "model_id": "fed_predictive_maintenance_v1",
+    "round": 3,
+    "loss": 0.20673123106913208,
+    "accuracy": 0.9293902412453117,
+    "precision": 0.8581548486267515,
+    "recall": 0.8946414784103534,
+    "f1_score": 0.8746418349095867,
+    "participating_factories": [
+      "FactoryC",
+      "FactoryA",
+      "FactoryB"
+    ],
+    "timestamp": "2026-10-12T12:16:40.279004+00:00"
+  },
+  {
+    "model_id": "fed_predictive_maintenance_v1",
+    "round": 4,
+    "loss": 0.1458923393085568,
+    "accuracy": 0.9597993906165665,
+    "precision": 0.957424996086482,
+    "recall": 0.8937649520318502,
+    "f1_score": 0.9240947627840186,
+    "participating_factories": [
+      "FactoryC",
+      "FactoryA",
+      "FactoryB"
+    ],
+    "timestamp": "2026-10-12T12:16:42.780080+00:00"
+  },
+  {
+    "model_id": "fed_predictive_maintenance_v1",
+    "round": 5,
+    "loss": 0.12329047136607775,
+    "accuracy": 0.9643368815430561,
+    "precision": 0.9789629829165682,
+    "recall": 0.8888014855373378,
+    "f1_score": 0.9315332387211874,
+    "participating_factories": [
+      "FactoryC",
+      "FactoryA",
+      "FactoryB"
+    ],
+    "timestamp": "2026-10-12T12:16:45.221142+00:00"
+  }
+]

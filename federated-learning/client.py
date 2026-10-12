@@ -29,11 +29,20 @@ def load_factory_data(data_dir: str) -> tuple[np.ndarray, np.ndarray, np.ndarray
     if not data_path.exists():
         raise FileNotFoundError(f"Data directory not found: {data_dir}")
 
-    csv_files = sorted(data_path.glob("*.csv"))
+    # The simulator creates a daily file before its first record is flushed.
+    # Ignore transient empty files so clients can retry instead of crashing.
+    csv_files = sorted(path for path in data_path.glob("*.csv") if path.stat().st_size > 0)
     if not csv_files:
         raise ValueError(f"No CSV files found in {data_dir}")
 
-    frames = [pd.read_csv(f) for f in csv_files]
+    frames = []
+    for csv_file in csv_files:
+        try:
+            frames.append(pd.read_csv(csv_file))
+        except pd.errors.EmptyDataError:
+            continue
+    if not frames:
+        raise ValueError(f"No readable CSV files found in {data_dir}")
     df = pd.concat(frames, ignore_index=True)
 
     missing = [c for c in FEATURE_COLUMNS + [LABEL_COLUMN] if c not in df.columns]

@@ -1,10 +1,123 @@
 import random
 import math
 from datetime import datetime, timedelta
+from pathlib import Path
+import pandas as pd
+import numpy as np
+
+
+class AI4IDataGenerator:
+    """Generator that serves real data from the AI4I 2020 predictive maintenance dataset.
+
+    Maps AI4I columns to expected sensor format:
+    - Air temperature [K] → temperature (°C)
+    - Process temperature [K] → power_consumption (derived)
+    - Rotational speed [rpm] → vibrations (normalized)
+    - Torque [Nm] → pressure (normalized)
+    - Tool wear [min] → humidity (derived)
+    - Machine failure / failure types → status
+
+    Product Type (L/M/H) maps to FactoryA/FactoryB/FactoryC
+    """
+
+    TYPE_TO_FACTORY = {
+        'L': 'FactoryA',  # Low
+        'M': 'FactoryB',  # Medium
+        'H': 'FactoryC',  # High
+    }
+
+    FACTORY_TO_TYPE = {v: k for k, v in TYPE_TO_FACTORY.items()}
+
+    # Normalization ranges for derived sensors
+    VIBRATION_RANGE = (0.0, 5.0)      # Rotational speed 1100-3000 rpm → 0-5
+    PRESSURE_RANGE = (10.0, 25.0)     # Torque 3-80 Nm → 10-25
+    HUMIDITY_RANGE = (10.0, 90.0)     # Tool wear 0-250 min → 10-90
+    POWER_RANGE = (50.0, 500.0)       # Process temp 305-315 K → 50-500
+    TEMP_C_RANGE = (20.0, 120.0)      # Air temp 295-305 K → 20-32°C → scaled
+
+    def __init__(self, factory_id: str, csv_path: str = "ai4i2020.csv", seed: int | None = None):
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+
+        self.factory_id = factory_id
+        self.product_type = self.FACTORY_TO_TYPE.get(factory_id, 'L')
+
+        # Load and filter dataset
+        self.csv_path = Path(csv_path)
+        if not self.csv_path.exists():
+            # Try relative to project root
+            self.csv_path = Path(__file__).parent.parent / csv_path
+
+        self.df = pd.read_csv(self.csv_path)
+        self.factory_data = self.df[self.df['Type'] == self.product_type].copy().reset_index(drop=True)
+
+        if len(self.factory_data) == 0:
+            raise ValueError(f"No data for factory {factory_id} (type {self.product_type})")
+
+        self.index = 0
+        self._precompute_normalized()
+
+    def _precompute_normalized(self):
+        """Pre-compute normalized sensor values for efficiency."""
+        df = self.factory_data
+
+        # Temperature: Air temp K → °C
+        self.factory_data['temp_c'] = df['Air temperature [K]'] - 273.15
+
+        # Vibrations: Rotational speed → normalized 0-5
+        rpm_min, rpm_max = df['Rotational speed [rpm]'].min(), df['Rotational speed [rpm]'].max()
+        self.factory_data['vibrations'] = np.interp(
+            df['Rotational speed [rpm]'], [rpm_min, rpm_max], list(self.VIBRATION_RANGE)
+        )
+
+        # Pressure: Torque → normalized 10-25
+        torque_min, torque_max = df['Torque [Nm]'].min(), df['Torque [Nm]'].max()
+        self.factory_data['pressure'] = np.interp(
+            df['Torque [Nm]'], [torque_min, torque_max], list(self.PRESSURE_RANGE)
+        )
+
+        # Humidity: Tool wear → normalized 10-90
+        wear_min, wear_max = df['Tool wear [min]'].min(), df['Tool wear [min]'].max()
+        self.factory_data['humidity'] = np.interp(
+            df['Tool wear [min]'], [wear_min, wear_max], list(self.HUMIDITY_RANGE)
+        )
+
+        # Power consumption: Process temperature → normalized 50-500
+        pt_min, pt_max = df['Process temperature [K]'].min(), df['Process temperature [K]'].max()
+        self.factory_data['power_consumption'] = np.interp(
+            df['Process temperature [K]'], [pt_min, pt_max], list(self.POWER_RANGE)
+        )
+
+        # Status: any failure type = failure
+        failure_cols = ['Machine failure', 'TWF', 'HDF', 'PWF', 'OSF', 'RNF']
+        self.factory_data['status'] = df[failure_cols].any(axis=1).map({True: 'failure', False: 'normal'})
+
+        # Add small noise for realism
+        noise_factor = 0.02
+        for col in ['temp_c', 'vibrations', 'pressure', 'humidity', 'power_consumption']:
+            noise = np.random.normal(0, self.factory_data[col].std() * noise_factor, len(self.factory_data))
+            self.factory_data[col] += noise
+
+    def generate_reading(self, timestamp: datetime) -> dict:
+        """Get next reading from dataset, looping when exhausted."""
+        row = self.factory_data.iloc[self.index % len(self.factory_data)]
+        self.index += 1
+
+        return {
+            "factory_id": self.factory_id,
+            "timestamp": timestamp.isoformat(),
+            "temperature": round(float(row['temp_c']), 2),
+            "vibrations": round(float(row['vibrations']), 2),
+            "pressure": round(float(row['pressure']), 2),
+            "humidity": round(float(row['humidity']), 2),
+            "power_consumption": round(float(row['power_consumption']), 2),
+            "status": row['status'],
+        }
 
 
 class SensorDataGenerator:
-    # Sensor baselines and ranges per factory profile
+    """Fallback synthetic generator (kept for compatibility)."""
     PROFILES = {
         "FactoryA": {
             "temperature": {"base": 65.0, "std": 5.0, "min": 20.0, "max": 120.0},
@@ -109,12 +222,27 @@ class SensorDataGenerator:
 
 
 class MultiFactoryGenerator:
-    def __init__(self, factory_ids: list[str] | None = None, seed: int | None = None):
+    """Generator that uses AI4I real data for each factory."""
+
+    def __init__(self, factory_ids: list[str] | None = None, csv_path: str = "ai4i2020.csv", seed: int | None = None, use_real_data: bool = True):
         self.factory_ids = factory_ids or ["FactoryA", "FactoryB", "FactoryC"]
-        self.generators = {
-            fid: SensorDataGenerator(fid, seed=seed)
-            for fid in self.factory_ids
-        }
+        dataset_path = Path(csv_path)
+        if not dataset_path.exists():
+            dataset_path = Path(__file__).parent.parent / csv_path
+        # Container images may intentionally omit the large source dataset.
+        # Keep the simulator operational with the deterministic synthetic model.
+        self.use_real_data = use_real_data and dataset_path.exists()
+
+        if self.use_real_data:
+            self.generators = {
+                fid: AI4IDataGenerator(fid, csv_path=str(dataset_path), seed=seed)
+                for fid in self.factory_ids
+            }
+        else:
+            self.generators = {
+                fid: SensorDataGenerator(fid, seed=seed)
+                for fid in self.factory_ids
+            }
 
     def generate_all(self, timestamp: datetime) -> list[dict]:
         return [gen.generate_reading(timestamp) for gen in self.generators.values()]
