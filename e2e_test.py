@@ -35,6 +35,11 @@ EDC_BASES = [
     "http://localhost:8081",
     "http://localhost:8082",
 ]
+EDC_MANAGEMENT_BASES = [
+    "http://localhost:8180/management",
+    "http://localhost:8181/management",
+    "http://localhost:8182/management",
+]
 
 
 def run_cmd(cmd, check=True, capture=True, timeout=120):
@@ -139,17 +144,22 @@ def test_api_endpoints():
 
 
 def test_edc_connectors():
-    """Test EDC connector health endpoints."""
+    """Test official EDC readiness and management APIs."""
     print("\n🔍 Testing EDC connectors...")
     for i, base in enumerate(EDC_BASES):
-        r = requests.get(f"{base}/health", timeout=10)
-        assert r.status_code == 200, f"EDC {i} health failed: {r.status_code}"
+        r = requests.get(f"{base}/api/check/readiness", timeout=10)
+        assert r.status_code == 200, f"EDC {i} readiness failed: {r.status_code}"
         data = r.json()
-        assert data["status"] == "healthy"
-        print(f"  ✅ EDC Factory{i+1} ({base}): healthy, assets={data['assets']}, contracts={data['contractDefinitions']}")
+        assert data["isSystemHealthy"] is True
+        print(f"  ✅ EDC Factory{i+1} ({base}): ready")
     
     # Test asset discovery
-    r = requests.get(f"{EDC_BASES[0]}/api/v1/management/assets", timeout=10)
+    r = requests.post(
+        f"{EDC_MANAGEMENT_BASES[0]}/v3/assets/request",
+        headers={"X-Api-Key": "password"},
+        json={"@context": {}, "offset": 0, "limit": 100},
+        timeout=10,
+    )
     assert r.status_code == 200
     assets = r.json()
     assert len(assets) >= 5, f"Expected at least 5 assets, got {len(assets)}"
@@ -242,7 +252,7 @@ def main():
     wait_for_http(f"{API_BASE}/api/factories", timeout=60)
     wait_for_http(f"{API_BASE}/health", timeout=60)
     for base in EDC_BASES:
-        wait_for_http(f"{base}/health", timeout=60)
+        wait_for_http(f"{base}/api/check/readiness", timeout=60)
     
     # 4. Verify compose services
     print("\n🔍 Verifying docker compose services...")
@@ -272,9 +282,9 @@ def main():
     print("=" * 60)
     print(f"\n📊 Dashboard: http://localhost:8501")
     print(f"🔌 API Docs:  http://localhost:8000/docs")
-    print(f"🔗 EDC A:     http://localhost:8080/health")
-    print(f"🔗 EDC B:     http://localhost:8081/health")
-    print(f"🔗 EDC C:     http://localhost:8082/health")
+    print(f"🔗 EDC A:     http://localhost:8080/api/check/readiness")
+    print(f"🔗 EDC B:     http://localhost:8081/api/check/readiness")
+    print(f"🔗 EDC C:     http://localhost:8082/api/check/readiness")
 
 
 if __name__ == "__main__":

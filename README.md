@@ -126,10 +126,10 @@ industrial-data-space/
 │   ├── contract_negotiation.py     # Contract negotiation logic (if used)
 │   ├── exchange_logger.py          # Exchange audit logging
 │   ├── policy_manager.py           # Access policy management
-│   └── edc-connector/              # EDC Connector implementation (Flask)
+│   └── edc-connector/              # EDC bootstrap assets and policies
 │       ├── Dockerfile
 │       ├── requirements.txt
-│       ├── server.py               # EDC REST API (assets, policies, contracts, discovery)
+│       ├── server.py               # Legacy prototype kept for reference
 │       └── config/
 │           └── config.properties   # EDC configuration
 │
@@ -285,6 +285,8 @@ python client.py --factory-id FactoryC --data-dir ../iot-simulation/data/Factory
 ```
 
 ### EDC Connectors
+
+Docker Compose now runs the official Tractus-X EDC runtime-memory image (`0.13.0`) for the three factories. It exposes the EDC readiness API on ports 8080–8082 and the management APIs on ports 8180–8182. The `edc-bootstrap` service creates the sensor assets, an open demo policy, and contract definitions through the real `/management/v3` API. The memory runtime is for local development/demo only; a persistent PostgreSQL/Vault runtime is required for production.
 
 ```bash
 cd data-space/edc-connector
@@ -445,7 +447,7 @@ kubectl delete namespace industrial-data-space
 
 #### EDC Connector API (`edc-connector/server.py`)
 
-A Flask-based REST API implementing core EDC management and data-plane endpoints:
+A legacy Flask prototype implementing a subset of EDC management and data-plane endpoints:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -755,7 +757,7 @@ ls -la checkpoints/
 
 ### Use Real EDC (Eclipse Dataspace Connector)
 
-Replace `data-space/edc-connector/server.py` with the official EDC control plane + data plane, configure via `application.properties`, and use the same REST contract for dashboard integration.
+The Docker Compose path already uses the official Tractus-X EDC control/data-plane runtime. The legacy Flask server remains in the repository only for comparison and older local experiments.
 
 ### Add Differential Privacy / Secure Aggregation
 
