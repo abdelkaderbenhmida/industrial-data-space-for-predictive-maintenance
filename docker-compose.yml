@@ -62,25 +62,88 @@ services:
     depends_on: [flower-server, iot-factory-c]
 
   edc-factory-a: &edc
-    build: ./data-space/edc-connector
-    environment:
-      EDC_CONNECTOR_NAME: FactoryA
-      EDC_CONNECTOR_ID: urn:connector:factory-a
-      EDC_OTHER_CONNECTORS: http://edc-factory-b:8080,http://edc-factory-c:8080
-    ports: ["8080:8080"]
+    image: tractusx/edc-runtime-memory:0.13.0
+    environment: &edc-environment
+      EDC_PARTICIPANT_ID: did:web:factory-a
+      EDC_IAM_ISSUER_ID: did:web:factory-a
+      EDC_IAM_CREDENTIAL_REVOCATION_MIMETYPE: application/json
+      EDC_PARTICIPANT_CONTEXT_ID: factory-a-context
+      TRACTUSX_EDC_PARTICIPANT_BPN: factory-a
+      WEB_HTTP_MANAGEMENT_AUTH_KEY: password
+      WEB_HTTP_MANAGEMENT_AUTH_TYPE: tokenbased
+      TX_EDC_DPF_CONSUMER_PROXY_AUTH_APIKEY: password
+      WEB_HTTP_PORT: "8080"
+      WEB_HTTP_PATH: /api
+      WEB_HTTP_MANAGEMENT_PORT: "8081"
+      WEB_HTTP_MANAGEMENT_PATH: /management
+      WEB_HTTP_CONTROL_PORT: "8083"
+      WEB_HTTP_CONTROL_PATH: /control
+      WEB_HTTP_PROTOCOL_PORT: "8084"
+      WEB_HTTP_PROTOCOL_PATH: /api/v1/dsp
+      WEB_HTTP_PUBLIC_PORT: "8086"
+      WEB_HTTP_PUBLIC_PATH: /api/public
+      EDC_OAUTH_PROVIDER_AUDIENCE: idsc:IDS_CONNECTORS_ALL
+      EDC_TRANSFER_PROXY_TOKEN_SIGNER_PRIVATEKEY_ALIAS: key-1
+      EDC_TRANSFER_PROXY_TOKEN_VERIFIER_PUBLICKEY_ALIAS: key-1
+      TX_EDC_VAULT_SECRETS: key-1:secret;client-secret:secret
+      EDC_IAM_STS_OAUTH_TOKEN_URL: http://localhost/token
+      EDC_IAM_STS_OAUTH_CLIENT_ID: local-demo
+      EDC_IAM_STS_OAUTH_CLIENT_SECRET_ALIAS: client-secret
+      TX_EDC_IAM_DCP_BDRS_SERVER_URL: http://localhost/bdrs
+      EDC_DSP_CALLBACK_ADDRESS: http://edc-factory-a:8084/api/v1/dsp
+      EDC_OAUTH_ENDPOINT_AUDIENCE: http://edc-factory-a:8084/api/v1/dsp
+    ports:
+      - "8080:8080"
+      - "8180:8081"
+      - "8280:8084"
+      - "8380:8086"
+      - "8480:8186"
 
   edc-factory-b:
     <<: *edc
     environment:
-      EDC_CONNECTOR_NAME: FactoryB
-      EDC_CONNECTOR_ID: urn:connector:factory-b
-      EDC_OTHER_CONNECTORS: http://edc-factory-a:8080,http://edc-factory-c:8080
-    ports: ["8081:8080"]
+      <<: *edc-environment
+      EDC_PARTICIPANT_ID: did:web:factory-b
+      EDC_IAM_ISSUER_ID: did:web:factory-b
+      EDC_PARTICIPANT_CONTEXT_ID: factory-b-context
+      TRACTUSX_EDC_PARTICIPANT_BPN: factory-b
+      EDC_DSP_CALLBACK_ADDRESS: http://edc-factory-b:8084/api/v1/dsp
+      EDC_OAUTH_ENDPOINT_AUDIENCE: http://edc-factory-b:8084/api/v1/dsp
+    ports:
+      - "8081:8080"
+      - "8181:8081"
+      - "8281:8084"
+      - "8381:8086"
+      - "8481:8186"
 
   edc-factory-c:
     <<: *edc
     environment:
-      EDC_CONNECTOR_NAME: FactoryC
-      EDC_CONNECTOR_ID: urn:connector:factory-c
-      EDC_OTHER_CONNECTORS: http://edc-factory-a:8080,http://edc-factory-b:8080
-    ports: ["8082:8080"]
+      <<: *edc-environment
+      EDC_PARTICIPANT_ID: did:web:factory-c
+      EDC_IAM_ISSUER_ID: did:web:factory-c
+      EDC_PARTICIPANT_CONTEXT_ID: factory-c-context
+      TRACTUSX_EDC_PARTICIPANT_BPN: factory-c
+      EDC_DSP_CALLBACK_ADDRESS: http://edc-factory-c:8084/api/v1/dsp
+      EDC_OAUTH_ENDPOINT_AUDIENCE: http://edc-factory-c:8084/api/v1/dsp
+    ports:
+      - "8082:8080"
+      - "8182:8081"
+      - "8282:8084"
+      - "8382:8086"
+      - "8482:8186"
+
+  edc-bootstrap:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      edc-factory-a:
+        condition: service_started
+      edc-factory-b:
+        condition: service_started
+      edc-factory-c:
+        condition: service_started
+    environment:
+      EDC_API_KEY: password
+    volumes:
+      - ./data-space/edc-connector/bootstrap.sh:/bootstrap.sh:ro
+    entrypoint: ["/bin/sh", "/bootstrap.sh"]

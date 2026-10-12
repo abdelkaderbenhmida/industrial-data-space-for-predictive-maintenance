@@ -371,7 +371,7 @@ async def get_alerts(
 
 @app.get("/api/edc/status")
 async def get_edc_status():
-    """Return the health of the configured factory connectors."""
+    """Return readiness and management statistics for real EDC runtimes."""
     import requests
 
     endpoints = [
@@ -385,15 +385,29 @@ async def get_edc_status():
     statuses = []
     for endpoint in endpoints:
         try:
-            response = requests.get(f"{endpoint.rstrip('/')}/health", timeout=2)
-            payload = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+            base = endpoint.rstrip("/")
+            response = requests.get(f"{base}/api/check/readiness", timeout=2)
+            assets_response = requests.post(
+                f"{base.replace(':8080', ':8081')}/management/v3/assets/request",
+                headers={"X-Api-Key": os.environ.get("EDC_MANAGEMENT_API_KEY", "password")},
+                json={"@context": {}, "offset": 0, "limit": 100},
+                timeout=2,
+            )
+            contracts_response = requests.post(
+                f"{base.replace(':8080', ':8081')}/management/v3/contractdefinitions/request",
+                headers={"X-Api-Key": os.environ.get("EDC_MANAGEMENT_API_KEY", "password")},
+                json={"@context": {}, "offset": 0, "limit": 100},
+                timeout=2,
+            )
+            assets = assets_response.json() if assets_response.ok else []
+            contracts = contracts_response.json() if contracts_response.ok else []
             statuses.append({
                 "endpoint": endpoint,
-                "status": payload.get("status", "unhealthy") if response.ok else "unhealthy",
-                "connector_id": payload.get("connectorId"),
-                "connector_name": payload.get("connectorName"),
-                "assets": payload.get("assets", 0),
-                "contract_definitions": payload.get("contractDefinitions", 0),
+                "status": "healthy" if response.ok else "unhealthy",
+                "connector_id": None,
+                "connector_name": endpoint.rsplit("/", 1)[-1],
+                "assets": len(assets) if isinstance(assets, list) else 0,
+                "contract_definitions": len(contracts) if isinstance(contracts, list) else 0,
             })
         except (requests.RequestException, ValueError):
             statuses.append({"endpoint": endpoint, "status": "unavailable"})

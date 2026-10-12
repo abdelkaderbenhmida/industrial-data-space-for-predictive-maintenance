@@ -2,76 +2,76 @@
   {
     "model_id": "fed_predictive_maintenance_v1",
     "round": 1,
-    "loss": 0.3358114327837415,
-    "accuracy": 0.8702435896875296,
-    "precision": 0.7007257024162983,
-    "recall": 0.9360954848892603,
-    "f1_score": 0.799394961591298,
+    "loss": 0.32933794220107626,
+    "accuracy": 0.9048827876924703,
+    "precision": 0.7768688484763672,
+    "recall": 0.9482747420552735,
+    "f1_score": 0.8513552632991751,
     "participating_factories": [
       "FactoryC",
-      "FactoryA",
-      "FactoryB"
+      "FactoryB",
+      "FactoryA"
     ],
-    "timestamp": "2026-10-12T12:16:35.296921+00:00"
+    "timestamp": "2026-10-12T19:01:50.771856+00:00"
   },
   {
     "model_id": "fed_predictive_maintenance_v1",
     "round": 2,
-    "loss": 0.2471185898186769,
-    "accuracy": 0.9191211709416686,
-    "precision": 0.8228598214960187,
-    "recall": 0.9048587475764075,
-    "f1_score": 0.8603822691627011,
+    "loss": 0.22287192409258735,
+    "accuracy": 0.9176497161744406,
+    "precision": 0.8134711342399097,
+    "recall": 0.9255179596940472,
+    "f1_score": 0.8643890570525007,
     "participating_factories": [
       "FactoryC",
-      "FactoryA",
-      "FactoryB"
+      "FactoryB",
+      "FactoryA"
     ],
-    "timestamp": "2026-10-12T12:16:37.770799+00:00"
+    "timestamp": "2026-10-12T19:01:54.210075+00:00"
   },
   {
     "model_id": "fed_predictive_maintenance_v1",
     "round": 3,
-    "loss": 0.20673123106913208,
-    "accuracy": 0.9293902412453117,
-    "precision": 0.8581548486267515,
-    "recall": 0.8946414784103534,
-    "f1_score": 0.8746418349095867,
+    "loss": 0.1798321977279979,
+    "accuracy": 0.9458712704576484,
+    "precision": 0.9056652319076057,
+    "recall": 0.9047893854095398,
+    "f1_score": 0.9043013207153355,
     "participating_factories": [
       "FactoryC",
-      "FactoryA",
-      "FactoryB"
+      "FactoryB",
+      "FactoryA"
     ],
-    "timestamp": "2026-10-12T12:16:40.279004+00:00"
+    "timestamp": "2026-10-12T19:01:57.527651+00:00"
   },
   {
     "model_id": "fed_predictive_maintenance_v1",
     "round": 4,
-    "loss": 0.1458923393085568,
-    "accuracy": 0.9597993906165665,
-    "precision": 0.957424996086482,
-    "recall": 0.8937649520318502,
-    "f1_score": 0.9240947627840186,
+    "loss": 0.14255286545914217,
+    "accuracy": 0.9611020103192639,
+    "precision": 0.9563032018187875,
+    "recall": 0.9045940761656496,
+    "f1_score": 0.9292229638385083,
     "participating_factories": [
       "FactoryC",
-      "FactoryA",
-      "FactoryB"
+      "FactoryB",
+      "FactoryA"
     ],
-    "timestamp": "2026-10-12T12:16:42.780080+00:00"
+    "timestamp": "2026-10-12T19:02:00.537596+00:00"
   },
   {
     "model_id": "fed_predictive_maintenance_v1",
     "round": 5,
-    "loss": 0.12329047136607775,
-    "accuracy": 0.9643368815430561,
-    "precision": 0.9789629829165682,
-    "recall": 0.8888014855373378,
-    "f1_score": 0.9315332387211874,
+    "loss": 0.1111172502350056,
+    "accuracy": 0.970733178824262,
+    "precision": 0.9591257863735649,
+    "recall": 0.9386108480750763,
+    "f1_score": 0.9481280168873265,
     "participating_factories": [
       "FactoryC",
-      "FactoryA",
-      "FactoryB"
+      "FactoryB",
+      "FactoryA"
     ],
-    "timestamp": "2026-10-12T12:16:45.221142+00:00"
+    "timestamp": "2026-10-12T19:02:02.477738+00:00"
   }
 ]
